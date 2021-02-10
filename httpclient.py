@@ -33,7 +33,17 @@ class HTTPResponse(object):
         self.body = body
 
 class HTTPClient(object):
-    #def get_host_port(self,url):
+    def get_host_port(self,url):
+        res = urllib.parse.urlparse(url)
+        hostname = res.hostname
+        port = res.port
+        if port == None:
+            port = 80
+        path = res.path
+        if path == '':
+            path = '/'
+
+        return hostname, port, path
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,14 +51,16 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        code = int(data.split()[1])
+        return code
 
     def get_headers(self,data):
-        return None
+        return data.split("\r\n")
 
     def get_body(self, data):
-        return None
-    
+        body = data.split('\r\n\r\n')[1]
+        return body
+
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
         
@@ -65,16 +77,47 @@ class HTTPClient(object):
                 buffer.extend(part)
             else:
                 done = not part
+        read = buffer.decode('utf-8')
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+
+        hostname, port, path = self.get_host_port(url)
+
+        http_request = 'GET '+ url +' HTTP/1.1\r\nHost:' + hostname + '\r\nAccept: */*\r\nConnection: Close\r\n\r\n'
+
+        self.connect(socket.gethostbyname(hostname), port)
+        self.sendall(http_request)
+        self.socket.shutdown(socket.SHUT_WR)
+
+        data = self.recvall(self.socket)
+        code = self.get_code(data)
+        body = self.get_body(data)
+        headers = self.get_headers(data)
+        self.close()
+
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        
+        hostname, port, path = self.get_host_port(url)
+        
+        origbody = ''
+        if args :
+            origbody = urllib.parse.urlencode(args)
+
+        http_request = 'POST '+ url +' HTTP/1.1\r\nHost: ' + hostname + '\r\nAccept: */*\r\nContent-Length: ' + str(len(origbody)) +'\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\n' + origbody
+        #Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
+        self.connect(socket.gethostbyname(hostname), port)
+        self.sendall(http_request)
+        self.socket.shutdown(socket.SHUT_WR)
+
+        data = self.recvall(self.socket)
+        code = self.get_code(data)
+        body = self.get_body(data)
+        headers = self.get_headers(data)
+        self.close()
+
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
