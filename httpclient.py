@@ -102,11 +102,11 @@ class HTTPClient(object):
         
         hostname, port, path = self.get_host_port(url)
         
-        origbody = ''
+        query = ''
         if args :
-            origbody = urllib.parse.urlencode(args)
+            query = urllib.parse.urlencode(args)
 
-        http_request = 'POST '+ url +' HTTP/1.1\r\nHost: ' + hostname + '\r\nAccept: */*\r\nContent-Length: ' + str(len(origbody)) +'\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\n' + origbody
+        http_request = 'POST '+ url +' HTTP/1.1\r\nHost: ' + hostname + '\r\nAccept: */*\r\nContent-Length: ' + str(len(query)) +'\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\n' + query
         #Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
         self.connect(socket.gethostbyname(hostname), port)
         self.sendall(http_request)
